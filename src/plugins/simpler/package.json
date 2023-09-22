@@ -1,0 +1,18 @@
+{
+  "name": "simpler",
+  "packageManager": "yarn@3.1.1",
+  "type": "module",
+  "scripts": {
+    "start": "vite serve testhost/",
+    "build": "vite build src/index.ts"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.5.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9"
+  },
+  "dependencies": {
+    "preact": "^10.17.1"
+  }
+}

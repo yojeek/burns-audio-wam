@@ -1,0 +1,36 @@
+.waveform-container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.v-line {
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    background-color: red;
+}
+
+.v-line.draggable {
+    cursor: ew-resize;
+}
+
+#crop-region-start {
+    margin: 0 0 0 0;
+}
+
+#crop-region-start span {
+    position:  absolute;
+    margin-left: 5px;
+}
+
+#crop-region-end {
+    margin: 0 0 0 -2px;
+}
+
+#crop-region-end span {
+    position:  absolute;
+    transform: translateX(-100%);
+    margin-left: -5px;
+}

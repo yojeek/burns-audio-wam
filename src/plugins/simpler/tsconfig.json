@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+      "allowSyntheticDefaultImports": true,
+      "module": "esnext",
+      "moduleResolution": "node",
+      "target": "es2017",
+      "sourceMap": true,
+      "lib": ["es2017", "dom", "dom.iterable"],
+      "outDir": "dist",
+      "skipLibCheck": true,
+      "jsx": "react",
+      "jsxFactory": "h",
+      "jsxFragmentFactory": "Fragment"
+    },
+    "include": [
+      "./src/*"
+    ],
+    "exclude": [
+      "dist",
+      "node_modules",
+      "../../node_modules",
+      "../../../node_modules",
+    ]
+  }
