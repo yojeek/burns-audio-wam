@@ -32,6 +32,20 @@ export default class Simpler extends WebAudioModule<SimplerNode> {
                     minValue: 0,
                     maxValue: 1
                 },
+                fadein: {
+                    label: 'Fade In',
+                    type: 'float',
+                    defaultValue: 0,
+                    minValue: 0,
+                    maxValue: 1
+                },
+                fadeout: {
+                    label: 'Fade Out',
+                    type: 'float',
+                    defaultValue: 1,
+                    minValue: 0,
+                    maxValue: 1
+                },
                 end: {
                     label: 'End',
                     type: 'float',

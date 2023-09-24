@@ -42,10 +42,11 @@ async function main() {
     // You can can optionally specify additional information such as the initial state of the
     // plugin
     const pluginInstance = await pluginFactory.createInstance('default-wam-host-group', audioContext, {
-        // initialState
         params: {
             start: 0,
-            end: .5
+            fadein: .1,
+            fadeout: .5,
+            end: .9
         },
         url: './pianoc4.wav'
     });
@@ -74,6 +75,12 @@ async function main() {
     });
     document.getElementById('playE4')?.addEventListener('click', () => {
         audioContext.resume();
+        scheduleWamNote(pluginInstance, 64, audioContext.currentTime);
+    });
+    document.getElementById('playCMaj')?.addEventListener('click', () => {
+        audioContext.resume();
+        scheduleWamNote(pluginInstance, 60, audioContext.currentTime);
+        scheduleWamNote(pluginInstance, 62, audioContext.currentTime);
         scheduleWamNote(pluginInstance, 64, audioContext.currentTime);
     });
 

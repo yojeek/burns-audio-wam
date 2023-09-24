@@ -3,16 +3,17 @@ import {useEffect, useRef, useState} from "preact/compat";
 
 interface DraggableProps {
     id: string
-    className: string
-    children: ComponentChild
+    className?: string
+    children?: ComponentChild
     initialPos: { x: number, y: number }
     fixOnAxis?: "x" | "y"
-    constrains: { x: number, y: number, width: number, height: number }
     onDragEnd?: (pos: { x: number, y: number }) => void
+    containerRef?: any
+    constrainFn?: (pos: { x: number, y: number }) => { x: number, y: number }
 }
 
 export const Draggable = (props: DraggableProps) => {
-    const {id, className, children, initialPos, fixOnAxis, constrains, onDragEnd} = props;
+    const {id, className, children, initialPos, fixOnAxis, onDragEnd} = props;
     const ref = useRef();
 
     const [state, setState] = useState({
@@ -25,26 +26,21 @@ export const Draggable = (props: DraggableProps) => {
         }
     });
 
-    useEffect(() => {
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
+    console.log('DRAGGABLE', state.pos);
 
-        return () => {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-        };
-    }, [state.dragging]);
+    let isDragging = state.dragging;
 
     // calculate relative position to the mouse and set dragging=true
     const onMouseDown = (e) => {
+        console.log('MOUSEDOWN')
         // only left mouse button
         if (e.button !== 0) return;
-        const pos = ref.current.getBoundingClientRect();
 
         const rel = {
-            x: e.pageX - pos.left,
-            y: e.pageY - pos.top
+            x: e.pageX - state.pos.x,
+            y: e.pageY - state.pos.y
         };
+
         if (fixOnAxis === "y") {
             rel.x = initialPos.x;
         }
@@ -58,32 +54,55 @@ export const Draggable = (props: DraggableProps) => {
         e.preventDefault();
     };
     const onMouseUp = (e) => {
+        console.log('MOUSEUP')
+        isDragging = false;
         setState((p) => ({...p, dragging: false}));
+        console.log(state.pos)
         onDragEnd && onDragEnd(state.pos);
         e.stopPropagation();
         e.preventDefault();
     };
     const onMouseMove = (e) => {
-        if (!state.dragging) return;
+        // prevent extra drag event just after mouseup
+        if (!state.dragging || !isDragging) return;
+
         let x = e.pageX - state.rel.x;
         let y = e.pageY - state.rel.y;
 
-        const pos = {
-            x: x < constrains.x ? constrains.x : x > constrains.width ? constrains.width : x,
-            y: y < constrains.y ? constrains.y : y > constrains.height ? constrains.height : y
-        };
         if (fixOnAxis === "y") {
-            pos.x = initialPos.x;
+            x = initialPos.x;
         }
         if (fixOnAxis === "x") {
-            pos.y = initialPos.y;
+            y = initialPos.y;
         }
 
+        if (props.constrainFn) {
+            ({x, y} = props.constrainFn({x, y}));
+        }
 
-        setState((p) => ({...p, pos}));
+        setState((p) => ({...p, pos: {x, y}}));
+
+        console.log('MOUSEMOVE', state.pos, {x, y})
+
         e.stopPropagation();
         e.preventDefault();
     };
+
+    useEffect(() => {
+        console.log('DRAGGING', state.dragging);
+
+        if (state.dragging) {
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        }
+
+        return () => {
+            console.log(`CLEANUP, DRAGGING ${state.dragging}`)
+
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+        };
+    }, [state.dragging, onMouseUp, onMouseMove]);
 
     return (
         <div
