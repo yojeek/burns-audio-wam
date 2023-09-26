@@ -17,6 +17,7 @@ type SimplerViewState = {
     fadeIn: number
     fadeOut: number
     sampleEnd: number
+    canUpdateFromParams: boolean
 }
 
 const ENVELOPE_START_IDX = 0;
@@ -25,11 +26,13 @@ const ENVELOPE_FADE_OUT_IDX = 2;
 const ENVELOPE_END_IDX = 3;
 
 export default class SimplerView extends Component<SimplerViewProps, SimplerViewState> {
-    async componentWillMount(): Promise<void> {
-        this.setState({sampleUrl: this.props.plugin.audioNode.url});
+    private automationStatePoller: number;
 
+    async componentWillMount(): Promise<void> {
         const {start, end, fadein, fadeout} = this.props.plugin.audioNode.paramMgr.getParams();
+
         this.setState({
+            canUpdateFromParams: true,
             sampleStart: start.value,
             fadeIn: fadein.value,
             fadeOut: fadeout.value,
@@ -38,23 +41,59 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
     }
 
     componentDidMount() {
-        const sampleUrl = this.state.sampleUrl;
+        this.automationStatePoller = window.requestAnimationFrame(this.pollAutomationState)
+    }
 
-        if (sampleUrl) {
-            loadSample(this.props.plugin.audioContext, sampleUrl).then(buffer => {
-                this.setState({buffer});
-                this.props.plugin.audioNode.buffer = buffer;
-            })
+    // Lifecycle: Called just before our component will be destroyed
+    componentWillUnmount() {
+        window.cancelAnimationFrame(this.automationStatePoller)
+    }
+
+    pollAutomationState = async () => {
+        const {params: {start, fadein, fadeout, end}, url} = await this.props.plugin.audioNode.getState();
+
+        if (!this.state.canUpdateFromParams) {
+            this.automationStatePoller = window.requestAnimationFrame(this.pollAutomationState)
+            return;
         }
+
+        const stateUpdate = {};
+
+        if (url !== this.state.sampleUrl) {
+            stateUpdate['sampleUrl'] = url;
+            loadSample(this.props.plugin.audioContext, url)
+                .then(buffer => {
+                    this.setState({buffer});
+                    this.props.plugin.audioNode.buffer = buffer;
+                })
+                .catch(e => console.error(e));
+        }
+
+        if (start !== this.state.sampleStart) {
+            stateUpdate['sampleStart'] = start;
+        }
+        if (fadein !== this.state.fadeIn) {
+            stateUpdate['fadeIn'] = fadein;
+        }
+        if (fadeout !== this.state.fadeOut) {
+            stateUpdate['fadeOut'] = fadeout;
+        }
+        if (end !== this.state.sampleEnd) {
+            stateUpdate['sampleEnd'] = end;
+        }
+
+        Object.keys(stateUpdate).length && this.setState(stateUpdate);
+
+        this.automationStatePoller = window.requestAnimationFrame(this.pollAutomationState)
     }
 
     render(props?: RenderableProps<SimplerViewProps>, state?: Readonly<SimplerViewState>, context?: any): ComponentChild {
-        const [width, setWidth] = useState(400);
-        const [height, setHeight] = useState(175);
+        const width = 400;
+        const height = 175;
 
         const waveformContainerRef = useRef();
 
-        const envelopeHandlesPoints : ReadonlyArray<any> = [
+        const envelopeHandlesPoints: ReadonlyArray<any> = [
             {
                 x: state.sampleStart * width,
                 y: height
@@ -103,72 +142,103 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
                 position.x = nextKeypointX - 1;
             }
 
-            onDragEnd(position.x, idx)
+            updateStateFromDrag(position.x, idx)
 
             return position;
         }
 
-        const onDragEnd = (x: number, pos: number) => {
+        const paramMgr = this.props.plugin.audioNode.paramMgr;
+
+        const updateStateFromDrag = (x: number, idx: number) => {
             const value = x / width;
 
-            console.log('DRAG END', x, value, pos, this.state)
-
-            switch (pos) {
-                case 0:
-                    this.props.plugin.audioNode.paramMgr.setParamValue('start', value);
+            switch (idx) {
+                case ENVELOPE_START_IDX:
                     this.setState({sampleStart: value})
                     break;
-                case 1:
-                    this.props.plugin.audioNode.paramMgr.setParamValue('fadein', value);
+                case ENVELOPE_FADE_IN_IDX:
                     this.setState({fadeIn: value})
                     break;
-                case 2:
-                    this.props.plugin.audioNode.paramMgr.setParamValue('fadeout', value);
+                case ENVELOPE_FADE_OUT_IDX:
                     this.setState({fadeOut: value})
                     break;
-                case 3:
-                    this.props.plugin.audioNode.paramMgr.setParamValue('end', value);
+                case ENVELOPE_END_IDX:
                     this.setState({sampleEnd: value})
             }
         }
 
+        const updateParamsFromState = () => {
+            paramMgr.setParamsValues({
+                start: state.sampleStart,
+                fadein: state.fadeIn,
+                fadeout: state.fadeOut,
+                end: state.sampleEnd
+            })
+        }
+
+        const onDragStart = (pos, idx) => {
+            this.setState({canUpdateFromParams: false})
+        }
+
+        const onDragEnd = (pos, idx) => {
+            this.setState({canUpdateFromParams: true})
+            updateParamsFromState()
+        }
+
+        const onUrlChange = async (e) => {
+            const url = e.target.value;
+
+            if (url === state.sampleUrl) {
+                return;
+            }
+
+            try {
+                const buffer = await loadSample(this.props.plugin.audioContext, url);
+                this.setState({buffer});
+                this.props.plugin.audioNode.buffer = buffer;
+            } catch (e) {
+                console.error(e);
+            }
+
+            this.props.plugin.setSampleUrl(url);
+            this.setState({sampleUrl: url});
+        }
+
         return <div>
-            <p>Plugin : {props.plugin.name}</p>
-            <p>File : {state.sampleUrl}</p>
+            <label>
+                url : &nbsp;
+                <input type="text" value={state.sampleUrl} onChange={onUrlChange}/>
+            </label>
             <div class="waveform-container" style={{width, height}} ref={waveformContainerRef}>
                 <WaveformView buffer={state.buffer}></WaveformView>
                 <EnvelopeView points={envelopeHandlesPoints}>
                     <Draggable
-                        className="drag-handle"
                         initialPos={envelopeHandlesPoints[ENVELOPE_START_IDX]}
-                        id="fade-in"
                         fixOnAxis={"x"}
                         constrainFn={(pos) => constrainDrag(pos, ENVELOPE_START_IDX)}
-                        onDragEnd={(pos) => onDragEnd(pos.x, ENVELOPE_START_IDX)}
+                        onDragStart={(pos) => onDragStart(pos, ENVELOPE_START_IDX)}
+                        onDragEnd={(pos) => onDragEnd(pos, ENVELOPE_START_IDX)}
                     ></Draggable>
                     <Draggable
-                        className="drag-handle"
                         initialPos={envelopeHandlesPoints[ENVELOPE_FADE_IN_IDX]}
-                        id="crop-start"
                         fixOnAxis={"x"}
-                        onDragEnd={(pos) => onDragEnd(pos.x, ENVELOPE_FADE_IN_IDX)}
                         constrainFn={(pos) => constrainDrag(pos, ENVELOPE_FADE_IN_IDX)}
+                        onDragStart={(pos) => onDragStart(pos, ENVELOPE_FADE_IN_IDX)}
+                        onDragEnd={(pos) => onDragEnd(pos, ENVELOPE_FADE_IN_IDX)}
                     ></Draggable>
                     <Draggable
-                        className="drag-handle"
                         initialPos={envelopeHandlesPoints[ENVELOPE_FADE_OUT_IDX]}
-                        id="crop-end"
                         fixOnAxis={"x"}
-                        onDragEnd={(pos) => onDragEnd(pos.x, ENVELOPE_FADE_OUT_IDX)}
                         constrainFn={(pos) => constrainDrag(pos, ENVELOPE_FADE_OUT_IDX)}
+                        onDragStart={(pos) => onDragStart(pos, ENVELOPE_FADE_OUT_IDX)}
+                        onDragEnd={(pos) => onDragEnd(pos, ENVELOPE_FADE_OUT_IDX)}
                     ></Draggable>
                     <Draggable
-                        className="drag-handle"
                         initialPos={envelopeHandlesPoints[ENVELOPE_END_IDX]}
-                        id="crop-end"
                         fixOnAxis={"x"}
-                        onDragEnd={(pos) => onDragEnd(pos.x, ENVELOPE_END_IDX)}
                         constrainFn={(pos) => constrainDrag(pos, ENVELOPE_END_IDX)}
+                        onDragStart={(pos) => onDragStart(pos, ENVELOPE_END_IDX)}
+                        onDragEnd={(pos) => onDragEnd(pos, ENVELOPE_END_IDX)}
                     ></Draggable>
                 </EnvelopeView>
             </div>

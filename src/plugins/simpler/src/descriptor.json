@@ -1,0 +1,16 @@
+{
+    "identifier": "com.yojeek.simpler",
+    "name": "Simpler",
+    "vendor": "Yojeek",
+    "description": "Sample-based instrument",
+    "version": "0.0.1",
+    "sdkVersion": "0.0.10",
+    "thumbnail": "screenshot.png",
+    "keywords": ["sampler"],
+    "isInstrument": true,
+    "website": "none",
+    "hasAudioInput": false,
+    "hasAudioOutput": true,
+    "hasMidiInput": true,
+    "hasMidiOutput": false
+}

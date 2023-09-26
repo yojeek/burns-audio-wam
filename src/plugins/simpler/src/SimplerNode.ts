@@ -14,7 +14,7 @@ export class SimplerNode extends CompositeAudioNode {
     public url: string;
     buffer: AudioBuffer;
 
-    constructor(audioContext: BaseAudioContext, initialState={}) {
+    constructor(audioContext: BaseAudioContext, initialState = {}) {
         super(audioContext, initialState);
         this._output = this.context.createGain();
     }
@@ -42,7 +42,7 @@ export class SimplerNode extends CompositeAudioNode {
     }
 
     processMIDIEvents = (midiEvents: ScheduledMIDIEvent[]) => {
-        midiEvents.forEach ((message) => {
+        midiEvents.forEach((message) => {
             if (message.event[0] == MIDI.NOTE_ON) {
                 let midiNote = message.event[1]
 
@@ -55,10 +55,11 @@ export class SimplerNode extends CompositeAudioNode {
 
     play(midiNote: number) {
         if (!this.buffer) {
+            console.warn(`SimplerNode.play: no buffer`);
             return
         }
 
-        const { start, end, fadein, fadeout } = this.paramMgr.getParamsValues();
+        const {start, end, fadein, fadeout} = this.paramMgr.getParamsValues();
         const source = this.context.createBufferSource();
 
         source.playbackRate.value = 2 ** ((midiNote - this.sampleNote) / 12);
@@ -69,12 +70,20 @@ export class SimplerNode extends CompositeAudioNode {
 
         const gainNode = this.context.createGain();
 
-        gainNode.gain.setValueAtTime(0, time);
-        gainNode.gain.linearRampToValueAtTime(1, time + (fadein - start) * playbackDuration);
-        gainNode.gain.linearRampToValueAtTime(
-            0,
-            time + (end - fadeout) * playbackDuration
-        );
+        if (fadein - start > 0) {
+            gainNode.gain.setValueAtTime(0, time);
+            gainNode.gain.linearRampToValueAtTime(
+                1,
+                (time + 1) + ((fadein - start) * playbackDuration)
+            );
+        }
+
+        if (end - fadeout > 0) {
+            gainNode.gain.linearRampToValueAtTime(
+                0,
+                time + ((end - fadeout) * playbackDuration)
+            );
+        }
 
         source.connect(gainNode);
         gainNode.connect(this._output);

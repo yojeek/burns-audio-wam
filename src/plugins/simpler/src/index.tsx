@@ -6,18 +6,29 @@ import {SimplerNode, SimplerState} from './SimplerNode';
 import {h, render} from "preact";
 import {insertStyle} from "../../shared/insertStyle";
 import SimplerView from "./views/SimplerView";
-import styles from "./views/SimplerView.css"
-import "./views/SimplerView.css"
+import styles from "./views/SimplerView.css?inline"
 
 const baseUrl = getBaseUrl(new URL(import.meta.url));
 
 export default class Simpler extends WebAudioModule<SimplerNode> {
     _baseURL = baseUrl;
     _descriptorUrl = `${this._baseURL}/descriptor.json`;
-    private view: JSXInternal.Element;
+
+    private view: any;
 
     constructor(audioContext, options) {
         super(audioContext, options);
+    }
+
+    nonce: string | undefined;
+
+    async _loadDescriptor() {
+        const url = this._descriptorUrl;
+        if (!url) throw new TypeError('Descriptor not found');
+        const response = await fetch(url);
+        const descriptor = await response.json();
+        Object.assign(this._descriptor, descriptor);
+        return descriptor
     }
 
     async createAudioNode(initialState: any) {
@@ -53,20 +64,10 @@ export default class Simpler extends WebAudioModule<SimplerNode> {
                     minValue: 0,
                     maxValue: 1
                 }
-            },
-            internalParamsConfig: {
-                start: {
-                    onChange: (value, prevValue) => {
-                        console.log(`Param "start" has been changed from ${prevValue} to ${value}`);
-                    }, // callback
-                    automationRate: 10 // 10 times/sec
-                }
             }
         };
+
         const paramMgrNode = await ParamMgrFactory.create(this, optionsIn);
-
-        paramMgrNode.setNormalizedParamValue('start', 0.5);
-
         simplerNode.setup(paramMgrNode);
 
         if (initialState) {
@@ -78,13 +79,16 @@ export default class Simpler extends WebAudioModule<SimplerNode> {
             })
         }
 
-        console.log(simplerNode.paramMgr.getParams());
-
         return simplerNode;
     }
 
-    async initialize(initialState?: SimplerState) {
-        if (!this._audioNode) this.audioNode = await this.createAudioNode(initialState);
+    setSampleUrl(url: string) {
+        this.audioNode.setState({...this.audioNode.getState(), url});
+    }
+
+    async initialize(state: any) {
+        await this._loadDescriptor();
+        if (!this._audioNode) this.audioNode = await this.createAudioNode(state);
         this.initialized = true;
         return this;
     }
@@ -92,16 +96,17 @@ export default class Simpler extends WebAudioModule<SimplerNode> {
     async createGui() {
         const div = document.createElement('div');
 
-        // vite doesn't play nice with shadow dom css hot reload;
-        // todo uncomment when css finished
-
-        /*const shadow = div.attachShadow({mode: 'open'});
-        insertStyle(shadow, styles.toString())*/
+        const shadow = div.attachShadow({mode: 'open'});
+        insertStyle(shadow, styles.toString())
 
         this.view = <SimplerView plugin={this}></SimplerView>;
 
-        render(this.view, div);
+        render(this.view, shadow);
 
         return div;
+    }
+
+    destroyGui(el: Element) {
+        render(null, el.shadowRoot)
     }
 }

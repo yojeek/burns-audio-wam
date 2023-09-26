@@ -10,7 +10,8 @@
       "skipLibCheck": true,
       "jsx": "react",
       "jsxFactory": "h",
-      "jsxFragmentFactory": "Fragment"
+      "jsxFragmentFactory": "Fragment",
+      "types": ["vite/client"]
     },
     "include": [
       "./src/*"
@@ -19,6 +20,6 @@
       "dist",
       "node_modules",
       "../../node_modules",
-      "../../../node_modules",
+      "../../../node_modules"
     ]
   }

@@ -41,15 +41,19 @@ async function main() {
     // Create a new instance of the plugin
     // You can can optionally specify additional information such as the initial state of the
     // plugin
-    const pluginInstance = await pluginFactory.createInstance('default-wam-host-group', audioContext, {
+    const initialState = {
         params: {
             start: 0,
-            fadein: .1,
+            fadein: 0,
             fadeout: .5,
             end: .9
         },
-        url: './pianoc4.wav'
-    });
+        url: './stringc4.wav'
+    };
+    const pluginInstance = await pluginFactory.createInstance('default-wam-host-group', audioContext, null/*initialState*/);
+
+    /*pluginInstance.setSampleUrl('./pianoc4.wav');*/
+    console.log(await pluginInstance.audioNode.getParameterValues(true));
 
     // instance.audioNode is the plugin WebAudio node (native, AudioWorklet or
     // Composite). It can then be connected to the WebAudio graph.
@@ -83,7 +87,16 @@ async function main() {
         scheduleWamNote(pluginInstance, 62, audioContext.currentTime);
         scheduleWamNote(pluginInstance, 64, audioContext.currentTime);
     });
-
+    document.getElementById('saveState')?.addEventListener('click', async () => {
+        const state = await pluginInstance.audioNode.getState();
+        console.log(`saving state`, state)
+        window.localStorage.setItem('simpler', JSON.stringify(state));
+    });
+    document.getElementById('loadState')?.addEventListener('click', async () => {
+        const state = JSON.parse(window.localStorage.getItem('simpler'));
+        console.log(`loading state`, state)
+        await pluginInstance.audioNode.setState(state);
+    });
 }
 
 main();

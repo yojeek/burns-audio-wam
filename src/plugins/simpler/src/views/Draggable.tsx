@@ -2,19 +2,22 @@ import {ComponentChild, h} from "preact";
 import {useEffect, useRef, useState} from "preact/compat";
 
 interface DraggableProps {
-    id: string
-    className?: string
     children?: ComponentChild
     initialPos: { x: number, y: number }
     fixOnAxis?: "x" | "y"
-    onDragEnd?: (pos: { x: number, y: number }) => void
-    containerRef?: any
     constrainFn?: (pos: { x: number, y: number }) => { x: number, y: number }
+    onDragStart?: (pos: { x: number, y: number }) => void
+    onDragEnd?: (pos: { x: number, y: number }) => void
 }
 
 export const Draggable = (props: DraggableProps) => {
-    const {id, className, children, initialPos, fixOnAxis, onDragEnd} = props;
+    const {children, initialPos, fixOnAxis, onDragEnd, onDragStart} = props;
     const ref = useRef();
+
+    if (isFinite(initialPos.x) === false || isFinite(initialPos.y) === false) {
+        console.warn('INVALID INITIAL POS', initialPos)
+        return null;
+    }
 
     const [state, setState] = useState({
         pos: initialPos,
@@ -26,7 +29,17 @@ export const Draggable = (props: DraggableProps) => {
         }
     });
 
-    console.log('DRAGGABLE', state.pos);
+    useEffect(() => {
+        setState((p) => ({...p, pos: initialPos}));
+    }, [initialPos]);
+
+    useEffect(() => {
+        if (state.dragging) {
+            onDragStart && onDragStart(state.pos);
+        } else {
+            onDragEnd && onDragEnd(state.pos);
+        }
+    }, [state.dragging]);
 
     let isDragging = state.dragging;
 
@@ -54,10 +67,8 @@ export const Draggable = (props: DraggableProps) => {
         e.preventDefault();
     };
     const onMouseUp = (e) => {
-        console.log('MOUSEUP')
         isDragging = false;
         setState((p) => ({...p, dragging: false}));
-        console.log(state.pos)
         onDragEnd && onDragEnd(state.pos);
         e.stopPropagation();
         e.preventDefault();
@@ -82,23 +93,17 @@ export const Draggable = (props: DraggableProps) => {
 
         setState((p) => ({...p, pos: {x, y}}));
 
-        console.log('MOUSEMOVE', state.pos, {x, y})
-
         e.stopPropagation();
         e.preventDefault();
     };
 
     useEffect(() => {
-        console.log('DRAGGING', state.dragging);
-
         if (state.dragging) {
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
         }
 
         return () => {
-            console.log(`CLEANUP, DRAGGING ${state.dragging}`)
-
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
         };
@@ -106,8 +111,7 @@ export const Draggable = (props: DraggableProps) => {
 
     return (
         <div
-            id={id}
-            className={className}
+            className="drag-handle"
             ref={ref}
             onMouseDown={onMouseDown}
             onMouseUp={onMouseUp}
