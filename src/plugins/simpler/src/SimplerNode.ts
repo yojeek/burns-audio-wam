@@ -93,8 +93,9 @@ export class SimplerNode extends CompositeAudioNode {
         source.start(time, start * this.buffer.duration, playbackDuration);
 
         source.onended = () => {
-            source.disconnect();
-            gainNode.disconnect();
+            console.log(`END, started at ${time} ended at ${this.context.currentTime} `)
+            console.log(`expected duration ${playbackDuration}, actual duration ${this.context.currentTime - time} `)
+            //gainNode.disconnect();
         }
     }
 }

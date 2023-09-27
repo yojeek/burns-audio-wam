@@ -2,7 +2,6 @@
     position: relative;
     height: 100%;
     width: 100%;
-    padding: 10px;
 }
 
 .drag-container {
@@ -12,10 +11,11 @@
 
 .drag-handle {
     position: absolute;
-    left: -.25em;
     width: .5em;
     height: .5em;
     background-color: red;
     cursor: ew-resize;
     border-radius: .25em;
+    margin-left: -.25em;
+    margin-top: -.15em;
 }

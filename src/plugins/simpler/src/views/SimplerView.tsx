@@ -211,7 +211,7 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
             </label>
             <div class="waveform-container" style={{width, height}} ref={waveformContainerRef}>
                 <WaveformView buffer={state.buffer}></WaveformView>
-                <EnvelopeView points={envelopeHandlesPoints}>
+                <EnvelopeView points={envelopeHandlesPoints} width={width} height={height}>
                     <Draggable
                         initialPos={envelopeHandlesPoints[ENVELOPE_START_IDX]}
                         fixOnAxis={"x"}
