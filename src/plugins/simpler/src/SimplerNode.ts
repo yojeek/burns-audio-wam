@@ -43,17 +43,17 @@ export class SimplerNode extends CompositeAudioNode {
 
     processMIDIEvents = (midiEvents: ScheduledMIDIEvent[]) => {
         midiEvents.forEach((message) => {
+            const [eventType, midiNote, velocity] = message.event
+            console.log(`SimplerNode.processMIDIEvents: ${eventType} ${midiNote} ${velocity}`)
             if (message.event[0] == MIDI.NOTE_ON) {
-                let midiNote = message.event[1]
-
-                this.play(midiNote);
+                this.play(midiNote, velocity / 127);
             }
         });
     }
 
     private sampleNote = 60;
 
-    play(midiNote: number) {
+    play(midiNote: number, volume: number = 1) {
         if (!this.buffer) {
             console.warn(`SimplerNode.play: no buffer`);
             return
@@ -66,28 +66,31 @@ export class SimplerNode extends CompositeAudioNode {
         source.buffer = this.buffer
 
         const time = this.context.currentTime;
-        const playbackDuration = this.buffer.duration;
+        const playbackDuration = (end - start) * this.buffer.duration;
 
         const gainNode = this.context.createGain();
 
         if (fadein - start > 0) {
             gainNode.gain.setValueAtTime(0, time);
             gainNode.gain.linearRampToValueAtTime(
-                1,
-                (time + 1) + ((fadein - start) * playbackDuration)
+                volume,
+                time + fadein * playbackDuration
             );
+        } else {
+            gainNode.gain.setValueAtTime(volume, time);
         }
 
         if (end - fadeout > 0) {
+            gainNode.gain.setValueAtTime(volume, time + fadeout * playbackDuration);
             gainNode.gain.linearRampToValueAtTime(
                 0,
-                time + ((end - fadeout) * playbackDuration)
+                time + playbackDuration
             );
         }
 
         source.connect(gainNode);
         gainNode.connect(this._output);
-        source.start(time, start * playbackDuration, (end - start) * playbackDuration);
+        source.start(time, start * this.buffer.duration, playbackDuration);
 
         source.onended = () => {
             source.disconnect();

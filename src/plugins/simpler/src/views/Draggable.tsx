@@ -45,7 +45,6 @@ export const Draggable = (props: DraggableProps) => {
 
     // calculate relative position to the mouse and set dragging=true
     const onMouseDown = (e) => {
-        console.log('MOUSEDOWN')
         // only left mouse button
         if (e.button !== 0) return;
 
