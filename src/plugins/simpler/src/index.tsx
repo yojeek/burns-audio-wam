@@ -32,7 +32,11 @@ export default class Simpler extends WebAudioModule<SimplerNode> {
     }
 
     async createAudioNode(initialState: any) {
-        const simplerNode = new SimplerNode(this.audioContext, initialState);
+        const moduleURL = `${this._baseURL}/phase-vocoder.js`;
+        console.log('Loading module', moduleURL)
+        await this.audioContext.audioWorklet.addModule(moduleURL);
+
+        const simplerNode = new SimplerNode(this.audioContext);
 
         let optionsIn: ParametersMappingConfiguratorOptions = {
             paramsConfig: {
@@ -84,6 +88,10 @@ export default class Simpler extends WebAudioModule<SimplerNode> {
 
     setSampleUrl(url: string) {
         this.audioNode.setState({...this.audioNode.getState(), url});
+    }
+
+    setSampleNote(sampleNote: number) {
+        this.audioNode.setState({...this.audioNode.getState(), sampleNote});
     }
 
     async initialize(state: any) {

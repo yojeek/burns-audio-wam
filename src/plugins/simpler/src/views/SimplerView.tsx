@@ -5,6 +5,30 @@ import {loadSample} from "../helpers";
 import {useEffect, useRef, useState} from "preact/compat";
 import {Draggable} from "./Draggable";
 import {EnvelopeView} from "./EnvelopeView";
+import {parseInt} from "lib0/number";
+
+
+function midiToNoteName(midi: number): string {
+    const notes = [
+        'C',
+        'C#',
+        'D',
+        'D#',
+        'E',
+        'F',
+        'F#',
+        'G',
+        'G#',
+        'A',
+        'A#',
+        'B'
+    ];
+
+    const octave = Math.floor(midi / 12) - 1;
+    const note = midi % 12;
+
+    return `${notes[note]}${octave}`;
+}
 
 export interface SimplerViewProps {
     plugin: Simpler
@@ -18,6 +42,7 @@ type SimplerViewState = {
     fadeOut: number
     sampleEnd: number
     canUpdateFromParams: boolean
+    sampleNote: number
 }
 
 const ENVELOPE_START_IDX = 0;
@@ -50,7 +75,7 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
     }
 
     pollAutomationState = async () => {
-        const {params: {start, fadein, fadeout, end}, url} = await this.props.plugin.audioNode.getState();
+        const {params: {start, fadein, fadeout, end}, url, sampleNote} = await this.props.plugin.audioNode.getState();
 
         if (!this.state.canUpdateFromParams) {
             this.automationStatePoller = window.requestAnimationFrame(this.pollAutomationState)
@@ -81,8 +106,13 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
         if (end !== this.state.sampleEnd) {
             stateUpdate['sampleEnd'] = end;
         }
+        if (sampleNote !== this.state.sampleNote) {
+            stateUpdate['sampleNote'] = sampleNote;
+        }
 
-        Object.keys(stateUpdate).length && this.setState(stateUpdate);
+        if (Object.keys(stateUpdate).length) {
+            this.setState(stateUpdate);
+        }
 
         this.automationStatePoller = window.requestAnimationFrame(this.pollAutomationState)
     }
@@ -204,10 +234,37 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
             this.setState({sampleUrl: url});
         }
 
+        const getNotesSelectOptions = () => {
+            const notes = [];
+
+            for (let i = 0; i < 128; i++) {
+                const note = <option key={i} value={i} selected={i === state.sampleNote}>{midiToNoteName(i)}</option>;
+
+                notes.push(note);
+            }
+
+            return notes
+        }
+
+        const onSampleNoteChange = (e) => {
+            const note = parseInt(e.target.value);
+            if (note === state.sampleNote) {
+                return;
+            }
+            // let automation update state
+            this.props.plugin.setSampleNote(note);
+        }
+
         return <div>
             <label>
                 url : &nbsp;
                 <input type="text" value={state.sampleUrl} onChange={onUrlChange}/>
+            </label>
+            <label style={{paddingLeft: '1em'}}>
+                sample note : &nbsp;
+                <select onChange={onSampleNoteChange}>
+                    {getNotesSelectOptions()}
+                </select>
             </label>
             <div class="waveform-container" style={{width, height}} ref={waveformContainerRef}>
                 <WaveformView buffer={state.buffer}></WaveformView>

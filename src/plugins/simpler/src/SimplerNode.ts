@@ -1,11 +1,20 @@
 import {CompositeAudioNode, ParamMgrNode} from '@webaudiomodules/sdk-parammgr'
 import {MIDI, ScheduledMIDIEvent} from "../../shared/midi";
 
+type Algorithm = 'resample' | 'phase-vocoder';
+
+const DEFAULT_ALGORITHM: Algorithm = 'resample';
+
 export interface SimplerState {
-    params?: any
+    params?: {
+        start: number,
+        fadein: number,
+        fadeout: number,
+        end: number
+    }
     url?: string
-    start?: number
-    end?: number
+    algorithm?: Algorithm
+    sampleNote?: number
 }
 
 export class SimplerNode extends CompositeAudioNode {
@@ -13,9 +22,11 @@ export class SimplerNode extends CompositeAudioNode {
     paramMgr: ParamMgrNode
     public url: string;
     buffer: AudioBuffer;
+    algorithm: Algorithm = DEFAULT_ALGORITHM;
+    public sampleNote = 60;
 
-    constructor(audioContext: BaseAudioContext, initialState = {}) {
-        super(audioContext, initialState);
+    constructor(audioContext: BaseAudioContext) {
+        super(audioContext);
         this._output = this.context.createGain();
     }
 
@@ -23,6 +34,8 @@ export class SimplerNode extends CompositeAudioNode {
         return {
             params: await super.getState(),
             url: this.url,
+            algorithm: this.algorithm,
+            sampleNote: this.sampleNote
         }
     }
 
@@ -31,6 +44,8 @@ export class SimplerNode extends CompositeAudioNode {
             await super.setState(state.params)
         }
         this.url = state.url;
+        this.algorithm = state.algorithm || DEFAULT_ALGORITHM;
+        this.sampleNote = state.sampleNote || 60;
     }
 
     setup(paramMgr: ParamMgrNode) {
@@ -51,8 +66,6 @@ export class SimplerNode extends CompositeAudioNode {
         });
     }
 
-    private sampleNote = 60;
-
     play(midiNote: number, volume: number = 1) {
         if (!this.buffer) {
             console.warn(`SimplerNode.play: no buffer`);
@@ -61,8 +74,6 @@ export class SimplerNode extends CompositeAudioNode {
 
         const {start, end, fadein, fadeout} = this.paramMgr.getParamsValues();
         const source = this.context.createBufferSource();
-
-        source.playbackRate.value = 2 ** ((midiNote - this.sampleNote) / 12);
         source.buffer = this.buffer
 
         const time = this.context.currentTime;
@@ -88,14 +99,28 @@ export class SimplerNode extends CompositeAudioNode {
             );
         }
 
-        source.connect(gainNode);
+        let vocoderNode = null;
+
+        if (this.algorithm === 'resample') {
+            source.playbackRate.value = 2 ** ((midiNote - this.sampleNote) / 12);
+            source.connect(gainNode);
+        } else if (this.algorithm === 'phase-vocoder') {
+            vocoderNode = new AudioWorkletNode(this.context, 'phase-vocoder-processor');
+            vocoderNode.parameters.get('pitchFactor').value = 2 ** ((midiNote - this.sampleNote) / 12);
+            source.connect(vocoderNode);
+            vocoderNode.connect(gainNode);
+        }
+
         gainNode.connect(this._output);
         source.start(time, start * this.buffer.duration, playbackDuration);
 
         source.onended = () => {
             console.log(`END, started at ${time} ended at ${this.context.currentTime} `)
             console.log(`expected duration ${playbackDuration}, actual duration ${this.context.currentTime - time} `)
-            //gainNode.disconnect();
+            // cleanup voices
+            gainNode.disconnect();
+            vocoderNode && vocoderNode.disconnect();
+            source.disconnect();
         }
     }
 }

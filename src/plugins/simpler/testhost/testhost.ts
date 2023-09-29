@@ -48,9 +48,9 @@ async function main() {
             fadeout: .5,
             end: .9
         },
-        url: './stringc4.wav'
+        url: './pianoc4.wav'
     };
-    const pluginInstance = await pluginFactory.createInstance('default-wam-host-group', audioContext, null/*initialState*/);
+    const pluginInstance = await pluginFactory.createInstance('default-wam-host-group', audioContext, initialState);
 
     /*pluginInstance.setSampleUrl('./pianoc4.wav');*/
     console.log(await pluginInstance.audioNode.getParameterValues(true));
@@ -80,6 +80,10 @@ async function main() {
     document.getElementById('playE4')?.addEventListener('click', () => {
         audioContext.resume();
         scheduleWamNote(pluginInstance, 64, audioContext.currentTime);
+    });
+    document.getElementById('playC6')?.addEventListener('click', () => {
+        audioContext.resume();
+        scheduleWamNote(pluginInstance, 84, audioContext.currentTime);
     });
     document.getElementById('playCMaj')?.addEventListener('click', () => {
         audioContext.resume();

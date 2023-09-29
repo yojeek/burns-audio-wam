@@ -20,6 +20,10 @@ export default defineConfig({
           src: resolve(__dirname, './src/descriptor.json'),
           dest: './',
         },
+        {
+          src: resolve(__dirname, './src/phase-vocoder.js'),
+          dest: './',
+        },
       ],
     }),
   ],
