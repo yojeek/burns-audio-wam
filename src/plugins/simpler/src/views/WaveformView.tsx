@@ -63,7 +63,7 @@ export class WaveformView extends Component<WaveformViewProps, any> {
     draw() {
         this.canvas.beginPath();
         this.canvas.rect(0, 0, this.canvasRef.width, this.canvasRef.height);
-        this.canvas.fillStyle = 'white';
+        this.canvas.fillStyle = 'rgba(0, 0, 0, 0)';
         this.canvas.fill();
 
         if (!this.props.buffer) {
@@ -73,7 +73,7 @@ export class WaveformView extends Component<WaveformViewProps, any> {
         let waveform = this.calculateWaveform()
         this.canvas.beginPath()
         this.canvas.lineWidth = 1
-        this.canvas.strokeStyle = "black";
+        this.canvas.strokeStyle = "white";
         let mid = this.canvasRef.height / 2
         for (let i = 0; i < waveform.length; i++) {
             this.canvas.moveTo(i, Math.round(mid + (mid * waveform[i].min)))

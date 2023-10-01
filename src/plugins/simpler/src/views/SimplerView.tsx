@@ -118,8 +118,8 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
     }
 
     render(props?: RenderableProps<SimplerViewProps>, state?: Readonly<SimplerViewState>, context?: any): ComponentChild {
-        const width = 400;
-        const height = 175;
+        const width = 350;
+        const height = 150;
 
         const waveformContainerRef = useRef();
 
@@ -255,7 +255,7 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
             this.props.plugin.setSampleNote(note);
         }
 
-        return <div>
+        return <div class={'simpler-container'}>
             <label>
                 url : &nbsp;
                 <input type="text" value={state.sampleUrl} onChange={onUrlChange}/>
