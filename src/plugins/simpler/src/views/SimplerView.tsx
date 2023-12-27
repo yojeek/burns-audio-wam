@@ -117,6 +117,51 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
         this.automationStatePoller = window.requestAnimationFrame(this.pollAutomationState)
     }
 
+    onFileDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const files = e.dataTransfer.files;
+
+        if (files.length === 0) {
+            return;
+        }
+
+        const file = files[0];
+
+        if (file.type !== 'audio/wav') {
+            return;
+        }
+
+        const url = URL.createObjectURL(file);
+        this.props.plugin.setSampleUrl(url);
+        this.setState({sampleUrl: url});
+
+        this.onUrlChange(url);
+    }
+
+    onFileDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    onUrlChange = async (url: string) => {
+        if (url === this.state.sampleUrl) {
+            return;
+        }
+
+        try {
+            const buffer = await loadSample(this.props.plugin.audioContext, url);
+            this.setState({buffer});
+            this.props.plugin.audioNode.buffer = buffer;
+        } catch (e) {
+            console.error(e);
+        }
+
+        this.props.plugin.setSampleUrl(url);
+        this.setState({sampleUrl: url});
+    }
+
     render(props?: RenderableProps<SimplerViewProps>, state?: Readonly<SimplerViewState>, context?: any): ComponentChild {
         const width = 350;
         const height = 150;
@@ -215,25 +260,6 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
             updateParamsFromState()
         }
 
-        const onUrlChange = async (e) => {
-            const url = e.target.value;
-
-            if (url === state.sampleUrl) {
-                return;
-            }
-
-            try {
-                const buffer = await loadSample(this.props.plugin.audioContext, url);
-                this.setState({buffer});
-                this.props.plugin.audioNode.buffer = buffer;
-            } catch (e) {
-                console.error(e);
-            }
-
-            this.props.plugin.setSampleUrl(url);
-            this.setState({sampleUrl: url});
-        }
-
         const getNotesSelectOptions = () => {
             const notes = [];
 
@@ -255,17 +281,24 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
             this.props.plugin.setSampleNote(note);
         }
 
-        return <div class={'simpler-container'}>
-            <label>
-                url : &nbsp;
-                <input type="text" value={state.sampleUrl} onChange={onUrlChange}/>
-            </label>
-            <label style={{paddingLeft: '1em'}}>
-                sample note : &nbsp;
-                <select onChange={onSampleNoteChange}>
-                    {getNotesSelectOptions()}
-                </select>
-            </label>
+        return <div
+            class={'simpler-container'}
+            onDrop={this.onFileDrop}
+            onDragOver={this.onFileDragOver}
+        >
+            <div class={'simpler-header'}>
+                <label>
+                    url : &nbsp;
+                    <input type="text" value={state.sampleUrl}
+                           onChange={event => this.onUrlChange(event.currentTarget.value)}/>
+                </label>
+                <label style={{paddingLeft: '1em'}}>
+                    sample note : &nbsp;
+                    <select onChange={onSampleNoteChange}>
+                        {getNotesSelectOptions()}
+                    </select>
+                </label>
+            </div>
             <div class="waveform-container" style={{width, height}} ref={waveformContainerRef}>
                 <WaveformView buffer={state.buffer}></WaveformView>
                 <EnvelopeView points={envelopeHandlesPoints} width={width} height={height}>
