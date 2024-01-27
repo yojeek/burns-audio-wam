@@ -1,9 +1,9 @@
 {
     "identifier": "com.yojeek.simpler",
     "name": "Simpler",
-    "vendor": "Yojeek",
+    "vendor": "yojeek",
     "description": "Sample-based instrument",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "sdkVersion": "0.0.10",
     "thumbnail": "screenshot.png",
     "keywords": ["sampler"],

@@ -6,6 +6,7 @@ import {useEffect, useRef, useState} from "preact/compat";
 import {Draggable} from "./Draggable";
 import {EnvelopeView} from "./EnvelopeView";
 import {parseInt} from "lib0/number";
+import {WamAsset} from "wam-extensions";
 
 
 function midiToNoteName(midi: number): string {
@@ -85,8 +86,9 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
         const stateUpdate = {};
 
         if (url !== this.state.sampleUrl) {
-            stateUpdate['sampleUrl'] = url;
-            loadSample(this.props.plugin.audioContext, url)
+            stateUpdate['sampleUrl'] = url
+            // todo – need to test changing sample from automation both with wam-extensions and standalone
+            loadSample(this.props.plugin.audioContext, url, this.props.plugin.instanceId)
                 .then(buffer => {
                     this.setState({buffer});
                     this.props.plugin.audioNode.buffer = buffer;
@@ -140,6 +142,29 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
         this.onUrlChange(url);
     }
 
+    onLoadAsset = async () => {
+        if (!window.WAMExtensions?.assets) {
+            console.error("Host must implement asset WAM extension")
+            return
+        }
+
+        window.WAMExtensions.assets.pickAsset(this.props.plugin.instanceId, "AUDIO", async (asset: WamAsset) => {
+            if (asset?.content) {
+                const arrayBuffer = await asset.content.arrayBuffer();
+                const buffer = await this.props.plugin.audioContext.decodeAudioData(arrayBuffer);
+
+                this.props.plugin.setSampleUrl(asset.uri);
+                this.setState({
+                    sampleUrl: asset.uri,
+                    buffer
+                });
+                this.props.plugin.audioNode.buffer = buffer;
+            } else {
+                console.warn(`No asset content for asset ${asset}`)
+            }
+        })
+    }
+
     onFileDragOver = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -151,7 +176,7 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
         }
 
         try {
-            const buffer = await loadSample(this.props.plugin.audioContext, url);
+            const buffer = await loadSample(this.props.plugin.audioContext, url, this.props.plugin.instanceId);
             this.setState({buffer});
             this.props.plugin.audioNode.buffer = buffer;
         } catch (e) {
@@ -298,6 +323,7 @@ export default class SimplerView extends Component<SimplerViewProps, SimplerView
                         {getNotesSelectOptions()}
                     </select>
                 </label>
+                <button onClick={this.onLoadAsset}>Load Sample</button>
             </div>
             <div class="waveform-container" style={{width, height}} ref={waveformContainerRef}>
                 <WaveformView buffer={state.buffer}></WaveformView>

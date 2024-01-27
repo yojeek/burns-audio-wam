@@ -1,5 +1,6 @@
 import initializeWamHost from "@webaudiomodules/sdk/src/initializeWamHost";
 import {WebAudioModule} from "@webaudiomodules/sdk";
+import WAMExtensions, {WamAsset} from "wam-extensions";
 
 function scheduleWamNote(plugin: WebAudioModule, note: number, time: number, durationSec = 0.1, noteVelocity = 100) {
     const auNode = plugin.audioNode;
@@ -32,16 +33,48 @@ function scheduleWamNote(plugin: WebAudioModule, note: number, time: number, dur
     auNode.scheduleEvents(midiOnEvent, midiOffEvent);
 }
 
+const assetManager = new WAMExtensions.AssetExtension();
+
+const ASSET_URI_PIANOC4 = './pianoc4.wav'
+
+async function getDefaultAsset(): Promise<WamAsset> {
+    console.log(`Getting hardcoded asset from  ${ASSET_URI_PIANOC4}`)
+
+    const response = await fetch(ASSET_URI_PIANOC4);
+
+    return {
+        uri: ASSET_URI_PIANOC4,
+        name: ASSET_URI_PIANOC4,
+        content: await response.blob()
+    }
+}
+
+assetManager.pickAsset = async (pluginId: string, assetType, loadCallback) => {
+    console.trace(`assetManager.pickAsset: ${pluginId} ${assetType}`);
+
+    loadCallback(await getDefaultAsset());
+}
+
+assetManager.loadAsset = async (pluginId: string, assetUri: string) => {
+    console.trace(`assetManager.loadAsset: ${pluginId} ${assetUri}`);
+
+    return await getDefaultAsset();
+}
+
+window.WAMExtensions = {
+    // assets: assetManager,
+}
+
 async function main() {
     const audioContext = new AudioContext();
     await initializeWamHost(audioContext, 'default-wam-host-group');
 
-    const { default: pluginFactory } = await import('../src/index'); // load main plugin file
+    const {default: pluginFactory} = await import('../src/index'); // load main plugin file
 
     // Create a new instance of the plugin
     // You can can optionally specify additional information such as the initial state of the
     // plugin
-    const initialState = {
+    /*const initialState = {
         params: {
             start: 0,
             fadein: 0,
@@ -49,15 +82,17 @@ async function main() {
             end: .9
         },
         url: './pianoc4.wav'
-    };
+    };*/
+
+    const initialState = JSON.parse(window.localStorage.getItem('simpler'));
+
     const pluginInstance = await pluginFactory.createInstance('default-wam-host-group', audioContext, initialState);
 
     /*pluginInstance.setSampleUrl('./pianoc4.wav');*/
-    console.log(await pluginInstance.audioNode.getParameterValues(true));
+    console.log('getParameterValues', await pluginInstance.audioNode.getParameterValues(true));
 
     // instance.audioNode is the plugin WebAudio node (native, AudioWorklet or
     // Composite). It can then be connected to the WebAudio graph.
-
 
     // for example...
     //mediaElementSource.connect(pluginInstance.audioNode);
